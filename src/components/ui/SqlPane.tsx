@@ -1,9 +1,11 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { invoke } from "@tauri-apps/api/core"
-import { Play, Plus, MoreHorizontal, PanelBottomClose, X } from "lucide-react"
+import { Play, Plus, MoreHorizontal, PanelBottomClose, X, Sparkles } from "lucide-react"
 import { Button } from "./Button"
+import { NlSuggestions } from "./NlSuggestions"
+import { explainQuery, generateQuery } from "../../lib/api"
 
-type ResultTab = "results" | "logs" | "issues"
+type ResultTab = "results" | "logs" | "issues" | "explain"
 
 interface QueryResult {
   columns:       string[]
@@ -12,16 +14,28 @@ interface QueryResult {
   exec_ms:       number
 }
 
-const DEFAULT_SQL = `SELECT * FROM sqlite_master WHERE type='table' ORDER BY name;`
-
 export function SqlPane() {
-  const [tab, setTab]         = useState<ResultTab>("results")
-  const [sql, setSql]         = useState(DEFAULT_SQL)
-  const [result, setResult]   = useState<QueryResult | null>(null)
-  const [running, setRunning] = useState(false)
-  const [error, setError]     = useState<string | null>(null)
-  const [logs, setLogs]       = useState<string[]>([])
-  const textareaRef           = useRef<HTMLTextAreaElement>(null)
+  const [tab, setTab]                           = useState<ResultTab>("results")
+  const [sql, setSql]                           = useState("")
+  const [result, setResult]                     = useState<QueryResult | null>(null)
+  const [running, setRunning]                   = useState(false)
+  const [error, setError]                       = useState<string | null>(null)
+  const [logs, setLogs]                         = useState<string[]>([])
+  const [explanation, setExplanation]           = useState<string | null>(null)
+  const [explaining, setExplaining]             = useState(false)
+  const [explainError, setExplainError]         = useState<string | null>(null)
+  const [lastExplainedSql, setLastExplainedSql] = useState<string | null>(null)
+  const [nlMode, setNlMode]                     = useState(false)
+  const [nlInput, setNlInput]                   = useState("")
+  const [nlLoading, setNlLoading]               = useState(false)
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (tab === "explain") {
+      triggerExplain(sql)
+    }
+  }, [tab, sql])
 
   async function runSql() {
     const query = sql.trim()
@@ -45,12 +59,10 @@ export function SqlPane() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Cmd/Ctrl + Enter → run
     if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
       e.preventDefault()
       runSql()
     }
-    // Tab → insert 2 spaces instead of focus-jump
     if (e.key === "Tab") {
       e.preventDefault()
       const ta = textareaRef.current!
@@ -59,6 +71,39 @@ export function SqlPane() {
       const next  = sql.substring(0, start) + "  " + sql.substring(end)
       setSql(next)
       requestAnimationFrame(() => { ta.selectionStart = ta.selectionEnd = start + 2 })
+    }
+  }
+
+  async function triggerExplain(query: string) {
+    if (!query.trim() || query === lastExplainedSql) return
+    setExplaining(true)
+    setExplainError(null)
+    try {
+      const text = await explainQuery(query)
+      setExplanation(text)
+      setLastExplainedSql(query)
+    } catch (e) {
+      setExplainError(String(e))
+    } finally {
+      setExplaining(false)
+    }
+  }
+
+  async function handleNlSubmit() {
+    if (!nlInput.trim()) return
+    setNlLoading(true)
+    try {
+      const generated = await generateQuery(nlInput, [])
+      setSql(generated)
+      setNlMode(false)
+      setNlInput("")
+      // focus the textarea after generation so it's ready to edit/run
+      requestAnimationFrame(() => textareaRef.current?.focus())
+    } catch (e) {
+      // fall back gracefully — stay in nl mode, let user retry
+      console.error("generateQuery failed:", e)
+    } finally {
+      setNlLoading(false)
     }
   }
 
@@ -100,32 +145,86 @@ export function SqlPane() {
           </Button>
         </div>
 
-        {/* Editable SQL textarea */}
+        {/* Textarea area — chips, nl input, or plain SQL editor */}
         <div style={{ position: "relative" }}>
-          <textarea
-            ref={textareaRef}
-            value={sql}
-            onChange={e => setSql(e.target.value)}
-            onKeyDown={handleKeyDown}
-            spellCheck={false}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "8px 14px",
-              fontFamily: "var(--font-mono)",
-              fontSize: 11.5,
-              color: "var(--text1)",
-              lineHeight: 1.7,
-              background: "var(--bg1)",
-              border: "none",
-              outline: "none",
-              resize: "none",
-              maxHeight: 110,
-              minHeight: 60,
-              overflowY: "auto",
-            }}
-            placeholder="Type SQL here… (⌘↵ to run)"
-          />
+
+          {/* Chips: only when sql is empty and not in nl mode */}
+          {sql === "" && !nlMode && (
+            <NlSuggestions
+              onSelectPrompt={async (prompt) => {
+                setNlLoading(true)
+                try {
+                  const generated = await generateQuery(prompt, [])
+                  setSql(generated)
+                } catch (e) {
+                  console.error("generateQuery failed:", e)
+                } finally {
+                  setNlLoading(false)
+                }
+              }}
+              onAskCustom={() => setNlMode(true)}
+            />
+          )}
+
+          {/* Natural language input mode */}
+          {nlMode ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px" }}>
+              <Sparkles size={12} style={{ color: "var(--accent)", flexShrink: 0 }} />
+              <input
+                autoFocus
+                value={nlInput}
+                onChange={e => setNlInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter") { e.preventDefault(); handleNlSubmit() }
+                  if (e.key === "Escape") { setNlMode(false); setNlInput("") }
+                }}
+                disabled={nlLoading}
+                placeholder="Describe what you want… (Enter to generate, Esc to cancel)"
+                style={{
+                  flex: 1,
+                  fontFamily: "var(--font-sans)",
+                  fontSize: 11.5,
+                  color: "var(--text1)",
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  opacity: nlLoading ? 0.5 : 1,
+                  minHeight: 60,
+                  lineHeight: 1.7,
+                }}
+              />
+              {nlLoading && (
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text3)" }}>
+                  generating…
+                </span>
+              )}
+            </div>
+          ) : (
+            <textarea
+              ref={textareaRef}
+              value={sql}
+              onChange={e => setSql(e.target.value)}
+              onKeyDown={handleKeyDown}
+              spellCheck={false}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "8px 14px",
+                fontFamily: "var(--font-mono)",
+                fontSize: 11.5,
+                color: "var(--text1)",
+                lineHeight: 1.7,
+                background: "var(--bg1)",
+                border: "none",
+                outline: "none",
+                resize: "none",
+                maxHeight: 110,
+                minHeight: 60,
+                overflowY: "auto",
+              }}
+              placeholder="Type SQL here… (⌘↵ to run)"
+            />
+          )}
         </div>
       </div>
 
@@ -141,11 +240,14 @@ export function SqlPane() {
           padding: "0 8px",
           gap: 2,
         }}>
-          {(["results", "logs", "issues"] as ResultTab[]).map(t => (
+          {(["results", "logs", "issues", "explain"] as ResultTab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
               style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
                 fontFamily: "var(--font-sans)",
                 fontSize: 11,
                 fontWeight: tab === t ? 500 : 400,
@@ -158,7 +260,11 @@ export function SqlPane() {
                 transition: "color 0.1s",
               }}
             >
-              {t === "results" ? "Query Results" : t === "logs" ? "System Logs" : "Schema Issues"}
+              {t === "explain" && <Sparkles size={10} />}
+              {t === "results" ? "Query Results"
+                : t === "logs"   ? "System Logs"
+                : t === "issues" ? "Schema Issues"
+                :                  "Explain"}
             </button>
           ))}
 
@@ -170,7 +276,6 @@ export function SqlPane() {
           </div>
         </div>
 
-        {/* results table */}
         {tab === "results" && (
           <div style={{ flex: 1, overflowY: "auto" }}>
             {error ? (
@@ -218,8 +323,6 @@ export function SqlPane() {
                     ))}
                   </tbody>
                 </table>
-
-                {/* status bar */}
                 <div style={{
                   padding: "5px 14px",
                   display: "flex",
@@ -262,6 +365,38 @@ export function SqlPane() {
             No schema issues detected.
           </div>
         )}
+
+        {tab === "explain" && (
+          <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }}>
+            {explaining ? (
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text3)" }}>
+                Generating explanation…
+              </span>
+            ) : explainError ? (
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "#f43f5e" }}>
+                {explainError}
+              </span>
+            ) : explanation ? (
+              <div style={{
+                fontFamily: "var(--font-sans)",
+                fontSize: 12,
+                color: "var(--text1)",
+                lineHeight: 1.75,
+                background: "var(--bg2)",
+                border: "1px solid var(--border1)",
+                borderRadius: 8,
+                padding: "12px 16px",
+              }}>
+                {explanation}
+              </div>
+            ) : (
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text3)" }}>
+                Write a query and switch here to explain it.
+              </span>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   )
