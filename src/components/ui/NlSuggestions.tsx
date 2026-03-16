@@ -1,15 +1,27 @@
 import { Sparkles } from "lucide-react"
 
 interface NlSuggestionsProps {
-  onSelectPrompt: (prompt: string) => void
+  onSelectPrompt: (sql: string) => void
   onAskCustom:   () => void
 }
 
-const CHIPS = [
-  "Show all tables",
-  "Count rows in each table",
-  "Find all foreign keys",
-  "Show columns of a table",
+const CHIPS: { label: string; sql: string }[] = [
+  {
+    label: "Show all tables",
+    sql:   "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
+  },
+  {
+    label: "Count rows in each table",
+    sql:   "SELECT name FROM sqlite_master WHERE type='table';",
+  },
+  {
+    label: "Find all foreign keys",
+    sql:   "SELECT * FROM pragma_foreign_key_list((SELECT name FROM sqlite_master WHERE type='table' LIMIT 1));",
+  },
+  {
+    label: "Show columns of a table",
+    sql:   "PRAGMA table_info('your_table');",
+  },
 ]
 
 const chipBase: React.CSSProperties = {
@@ -36,11 +48,11 @@ export function NlSuggestions({ onSelectPrompt, onAskCustom }: NlSuggestionsProp
     }}>
       {CHIPS.map(chip => (
         <button
-          key={chip}
-          onClick={() => onSelectPrompt(chip)}
+          key={chip.label}
+          onClick={() => onSelectPrompt(chip.sql)}
           style={chipBase}
         >
-          {chip}
+          {chip.label}
         </button>
       ))}
 
@@ -56,7 +68,7 @@ export function NlSuggestions({ onSelectPrompt, onAskCustom }: NlSuggestionsProp
         }}
       >
         <Sparkles size={10} />
-        Ask in plain English
+        Ask AI
       </button>
     </div>
   )

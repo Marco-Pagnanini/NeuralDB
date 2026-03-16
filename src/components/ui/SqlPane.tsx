@@ -97,10 +97,8 @@ export function SqlPane() {
       setSql(generated)
       setNlMode(false)
       setNlInput("")
-      // focus the textarea after generation so it's ready to edit/run
       requestAnimationFrame(() => textareaRef.current?.focus())
     } catch (e) {
-      // fall back gracefully — stay in nl mode, let user retry
       console.error("generateQuery failed:", e)
     } finally {
       setNlLoading(false)
@@ -151,17 +149,7 @@ export function SqlPane() {
           {/* Chips: only when sql is empty and not in nl mode */}
           {sql === "" && !nlMode && (
             <NlSuggestions
-              onSelectPrompt={async (prompt) => {
-                setNlLoading(true)
-                try {
-                  const generated = await generateQuery(prompt, [])
-                  setSql(generated)
-                } catch (e) {
-                  console.error("generateQuery failed:", e)
-                } finally {
-                  setNlLoading(false)
-                }
-              }}
+              onSelectPrompt={(sql) => setSql(sql)}
               onAskCustom={() => setNlMode(true)}
             />
           )}
