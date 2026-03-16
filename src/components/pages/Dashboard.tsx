@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import {
-    Network, Code2, GitCompare, Pencil, List,
+    Network, Sheet, GitCompare, Pencil, List,
     ZoomIn, ZoomOut, Maximize2, Hand,
     Share2, MoreHorizontal, Play, Sparkles,
 } from "lucide-react"
 import { DbSidebar } from "../ui/erd/DbSidebar"
 import { TableCard } from "../ui/erd/TableCard"
+import { DataPanel } from "../ui/erd/DataPanel"
 import { SqlPane } from "../ui/editor/SqlPane"
 import { AiChat } from "../ui/ai/AiChat"
 import { Button } from "../ui/base/Button"
@@ -134,7 +135,7 @@ function ErdLines({ tables, relations }: { tables: TableDef[]; relations: Relati
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
-type MainTab = "erd" | "sql" | "diff"
+type MainTab = "erd" | "data" | "diff"
 
 interface DashboardProps {
     dbPath: string
@@ -240,8 +241,8 @@ export function Dashboard({ dbPath, setDbPath }: DashboardProps) {
     }, [dbPath])
 
     const mainTabs: { id: MainTab; icon: React.ReactNode; label: string }[] = [
-        { id: "erd", icon: <Network size={13} />, label: "ERD" },
-        { id: "sql", icon: <Code2 size={13} />, label: "SQL" },
+        { id: "erd",  icon: <Network size={13} />,    label: "ERD"      },
+        { id: "data", icon: <Sheet size={13} />,       label: "Data"     },
         { id: "diff", icon: <GitCompare size={13} />, label: "HCL Diff" },
     ]
 
@@ -344,7 +345,14 @@ export function Dashboard({ dbPath, setDbPath }: DashboardProps) {
             <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
 
                 {/* Sidebar */}
-                <DbSidebar tables={tables} activeTable={activeTable} onSelectTable={setActiveTable} />
+                <DbSidebar
+                    tables={tables}
+                    activeTable={activeTable}
+                    onSelectTable={id => {
+                        setActiveTable(id)
+                        setActiveTab("data")   // auto-switch to Data tab
+                    }}
+                />
 
                 {/* Main area */}
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -444,10 +452,10 @@ export function Dashboard({ dbPath, setDbPath }: DashboardProps) {
                         </div>
                     )}
 
-                    {/* SQL tab placeholder */}
-                    {activeTab === "sql" && (
-                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                            <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text3)" }}>SQL editor — coming soon</span>
+                    {/* Data tab — table viewer */}
+                    {activeTab === "data" && (
+                        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+                            <DataPanel tableName={activeTable} />
                         </div>
                     )}
 
