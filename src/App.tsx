@@ -9,7 +9,7 @@ function App() {
     return (
         <div style={{ width: "100vw", height: "100vh" }}>
             {dbPath
-                ? <Dashboard dbPath={dbPath} />
+                ? <Dashboard dbPath={dbPath} setDbPath={setDbPath} />
                 : <WelcomeScreen onConnect={(path) => setDbPath(path)} />
             }
         </div>

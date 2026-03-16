@@ -1,16 +1,17 @@
 import { useState } from "react"
-import { Table2, KeyRound, Link2, Columns3, Plus } from "lucide-react"
-import type { TableDef } from "../pages/Dashboard"
+import { Table2, KeyRound, Link2, Columns3, Plus, GripVertical } from "lucide-react"
+import type { TableDef } from "../../pages/Dashboard"
 
 type Tab = "columns" | "statement" | "deps"
 
 interface TableCardProps {
-  table: TableDef
-  selected?: boolean
-  onSelect?: () => void
+  table:        TableDef
+  selected?:    boolean
+  onSelect?:    () => void
+  onDragStart?: (e: React.MouseEvent) => void
 }
 
-export function TableCard({ table, selected, onSelect }: TableCardProps) {
+export function TableCard({ table, selected, onSelect, onDragStart }: TableCardProps) {
   const [tab, setTab] = useState<Tab>("columns")
 
   return (
@@ -28,20 +29,28 @@ export function TableCard({ table, selected, onSelect }: TableCardProps) {
         boxShadow: selected
           ? `0 0 0 2px ${table.color}30, 0 8px 24px rgba(0,0,0,0.4)`
           : "0 4px 16px rgba(0,0,0,0.35)",
-        cursor: "pointer",
         userSelect: "none",
         transition: "box-shadow 0.15s, border-color 0.15s",
       }}
     >
-      {/* ── Header ── */}
-      <div style={{
-        background: table.color,
-        padding: "7px 10px",
-        display: "flex",
-        alignItems: "center",
-        gap: 7,
-      }}>
-        <Table2 size={13} color="#fff" style={{ flexShrink: 0 }} />
+      {/* ── Header (drag handle) ── */}
+      <div
+        onMouseDown={e => {
+          e.stopPropagation()
+          onDragStart?.(e)
+        }}
+        style={{
+          background: table.color,
+          padding: "7px 10px",
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          cursor: "grab",
+        }}
+      >
+        {/* grip icon — visual affordance */}
+        <GripVertical size={11} color="rgba(255,255,255,0.5)" style={{ flexShrink: 0 }} />
+        <Table2 size={12} color="#fff" style={{ flexShrink: 0 }} />
         <span style={{
           fontFamily: "var(--font-sans)",
           fontSize: 12,
@@ -53,6 +62,7 @@ export function TableCard({ table, selected, onSelect }: TableCardProps) {
           {table.name}
         </span>
         <button
+          onMouseDown={e => e.stopPropagation()}
           onClick={e => e.stopPropagation()}
           style={{
             background: "rgba(255,255,255,0.15)",
@@ -136,7 +146,6 @@ export function TableCard({ table, selected, onSelect }: TableCardProps) {
                 borderBottom: "1px solid var(--border1)",
               }}
             >
-              {/* name */}
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 {col.pk
                   ? <KeyRound size={9} style={{ color: "#eab308", flexShrink: 0 }} />
@@ -156,7 +165,6 @@ export function TableCard({ table, selected, onSelect }: TableCardProps) {
                 </span>
               </div>
 
-              {/* type */}
               <span style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,
@@ -168,7 +176,6 @@ export function TableCard({ table, selected, onSelect }: TableCardProps) {
                 {col.type}
               </span>
 
-              {/* nullable */}
               <span style={{
                 fontFamily: "var(--font-mono)",
                 fontSize: 10,

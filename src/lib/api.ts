@@ -14,9 +14,9 @@ export async function explainQuery(sql: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sql }),
   })
-  
+
   if (!res.ok) throw new Error(`AI error: ${res.status}`)
-  
+
   const data: ExplainResponse = await res.json()
   return data.explanation
 }
@@ -27,9 +27,9 @@ export async function generateQuery(prompt: string, schema: unknown): Promise<st
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ prompt, schema }),
   })
-  
+
   if (!res.ok) throw new Error(`AI error: ${res.status}`)
-  
+
   const data: GenerateResponse = await res.json()
   return data.sql
 }

@@ -2,8 +2,8 @@ import { motion } from "framer-motion"
 import { Database, FolderOpen } from "lucide-react"
 import { open } from "@tauri-apps/plugin-dialog"
 import { invoke } from "@tauri-apps/api/core"
-import { Tiles } from "../ui/tiles"
-import { Button } from "../ui/Button"
+import { Tiles } from "../ui/base/tiles"
+import { Button } from "../ui/base/Button"
 import logo from "../../assets/logo.png"
 
 interface WelcomeScreenProps {

@@ -4,9 +4,9 @@ import {
   Table2, Columns3, ListFilter,
   KeyRound, Link2, Search, GitCompare,
 } from "lucide-react"
-import { cn } from "../../lib/utils"
-import type { TableDef } from "../pages/Dashboard"
-import logo from "../../assets/logo.png"
+import { cn } from "../../../lib/utils"
+import type { TableDef } from "../../pages/Dashboard"
+import logo from "../../../assets/logo.png"
 
 /* ─── Types ──────────────────────────────────────────── */
 interface TreeItemProps {
