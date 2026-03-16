@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+/* ─── Geist Sans (via node_modules) ─────────────────── */
+@font-face {
+  font-family: 'Geist';
+  src: url('../node_modules/geist/dist/fonts/geist-sans/Geist-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('../node_modules/geist/dist/fonts/geist-sans/Geist-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('../node_modules/geist/dist/fonts/geist-sans/Geist-SemiBold.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Geist';
+  src: url('../node_modules/geist/dist/fonts/geist-sans/Geist-Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+
+/* ─── Geist Mono ─────────────────────────────────────── */
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('../node_modules/geist/dist/fonts/geist-mono/GeistMono-Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Mono';
+  src: url('../node_modules/geist/dist/fonts/geist-mono/GeistMono-Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+
+/* ─── Design tokens → CSS variables ─────────────────── */
+:root {
+  /* backgrounds */
+  --bg0:      #0b0b0e;
+  --bg1:      #111116;
+  --bg2:      #18181f;
+  --bg3:      #22222b;
+
+  /* borders */
+  --border1:  #1e1e27;
+  --border2:  #2a2a36;
+
+  /* accent */
+  --accent:      #5db8f5;
+  --accent2:     #82ceff;
+  --accent-dim:  rgba(93, 184, 245, 0.08);
+
+  /* text */
+  --text1: #e4e6eb;
+  --text2: #9ba3af;
+  --text3: #5a6270;
+
+  /* table header accents */
+  --table-blue:   #3b82f6;
+  --table-green:  #22c55e;
+  --table-orange: #f97316;
+  --table-purple: #a855f7;
+  --table-yellow: #eab308;
+
+  /* tile hover */
+  --tile: rgba(93, 184, 245, 0.05);
+
+  /* typography */
+  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', monospace;
+
+  /* base */
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--text1);
+  background-color: var(--bg0);
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Reset ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { width: 100%; height: 100%; overflow: hidden; }
+button { cursor: pointer; }
+input, button, textarea { outline: none; font-family: inherit; }
