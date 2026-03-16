@@ -4,13 +4,13 @@ import { Dashboard } from "./components/pages/Dashboard"
 import "./App.css"
 
 function App() {
-    const [connected, setConnected] = useState(false)
+    const [dbPath, setDbPath] = useState<string | null>(null)
 
     return (
         <div style={{ width: "100vw", height: "100vh" }}>
-            {connected
-                ? <Dashboard />
-                : <WelcomeScreen onConnect={() => setConnected(true)} />
+            {dbPath
+                ? <Dashboard dbPath={dbPath} />
+                : <WelcomeScreen onConnect={(path) => setDbPath(path)} />
             }
         </div>
     )

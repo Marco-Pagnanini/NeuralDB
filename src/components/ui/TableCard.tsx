@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Table2, KeyRound, Link2, Columns3, Plus } from "lucide-react"
-import type { TableDef } from "../../data/mockDb"
+import type { TableDef } from "../pages/Dashboard"
 
 type Tab = "columns" | "statement" | "deps"
 

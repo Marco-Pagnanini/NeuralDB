@@ -1,14 +1,30 @@
 import { motion } from "framer-motion"
-import { Database, Zap, GitBranch, FolderOpen } from "lucide-react"
+import { Database, FolderOpen } from "lucide-react"
+import { open } from "@tauri-apps/plugin-dialog"
+import { invoke } from "@tauri-apps/api/core"
 import { Tiles } from "../ui/tiles"
 import { Button } from "../ui/Button"
 import logo from "../../assets/logo.png"
 
 interface WelcomeScreenProps {
-    onConnect: () => void
+    onConnect: (path: string) => void
 }
 
 export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
+
+    async function pickFile() {
+        const selected = await open({
+            title: "Apri database SQLite",
+            filters: [{ name: "SQLite", extensions: ["sqlite", "db", "sqlite3"] }],
+            multiple: false,
+            directory: false,
+        })
+        if (!selected) return          // user cancelled
+        const path = typeof selected === "string" ? selected : selected
+        await invoke("open_db", { path })
+        onConnect(path as string)
+    }
+
     return (
         <div
             className="relative w-full h-full overflow-hidden flex items-center justify-center"
@@ -124,7 +140,7 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
                         size="lg"
                         variant="default"
                         leftIcon={<Database size={15} />}
-                        onClick={onConnect}
+                        onClick={pickFile}
                         className="w-full justify-center"
                     >
                         Connetti database
@@ -134,6 +150,7 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
                         size="lg"
                         variant="outline"
                         leftIcon={<FolderOpen size={15} />}
+                        onClick={pickFile}
                         className="w-full justify-center"
                     >
                         Apri file .sqlite

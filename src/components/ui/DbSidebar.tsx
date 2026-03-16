@@ -5,7 +5,7 @@ import {
   KeyRound, Link2, Search, GitCompare,
 } from "lucide-react"
 import { cn } from "../../lib/utils"
-import { TABLES } from "../../data/mockDb"
+import type { TableDef } from "../pages/Dashboard"
 import logo from "../../assets/logo.png"
 
 /* ─── Types ──────────────────────────────────────────── */
@@ -15,18 +15,19 @@ interface TreeItemProps {
   accent?: string
   depth?: number
   defaultOpen?: boolean
+  onRowClick?: () => void
   children?: React.ReactNode
 }
 
 /* ─── Tree node ──────────────────────────────────────── */
-function TreeItem({ label, icon, accent, depth = 0, defaultOpen = false, children }: TreeItemProps) {
+function TreeItem({ label, icon, accent, depth = 0, defaultOpen = false, onRowClick, children }: TreeItemProps) {
   const [open, setOpen] = useState(defaultOpen)
   const hasChildren = Boolean(children)
 
   return (
     <div>
       <button
-        onClick={() => hasChildren && setOpen(o => !o)}
+        onClick={() => { if (hasChildren) setOpen(o => !o); onRowClick?.() }}
         className={cn(
           "w-full flex items-center gap-1.5 px-2 py-[3px] rounded-[5px] text-left transition-colors duration-100",
           "hover:bg-(--bg3)",
@@ -81,11 +82,12 @@ function ColIcon({ pk, fk }: { pk?: boolean; fk?: boolean }) {
 
 /* ─── Sidebar ────────────────────────────────────────── */
 interface DbSidebarProps {
+  tables: TableDef[]
   activeTable: string | null
   onSelectTable: (id: string) => void
 }
 
-export function DbSidebar({ activeTable, onSelectTable }: DbSidebarProps) {
+export function DbSidebar({ tables, activeTable, onSelectTable }: DbSidebarProps) {
   return (
     <aside style={{
       width: 240,
@@ -159,7 +161,7 @@ export function DbSidebar({ activeTable, onSelectTable }: DbSidebarProps) {
           depth={0}
           defaultOpen
         >
-          {TABLES.map(table => (
+          {tables.map(table => (
             <TreeItem
               key={table.id}
               label={table.name}
@@ -167,6 +169,7 @@ export function DbSidebar({ activeTable, onSelectTable }: DbSidebarProps) {
               accent={table.color}
               depth={1}
               defaultOpen={activeTable === table.id}
+              onRowClick={() => onSelectTable(table.id)}
             >
               {/* Columns group */}
               <TreeItem label="Columns" icon={<Columns3 size={10} />} depth={2} defaultOpen>
