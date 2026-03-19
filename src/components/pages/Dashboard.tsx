@@ -161,7 +161,7 @@ export function Dashboard({ dbPath, setDbPath }: DashboardProps) {
     // ── Drag-and-drop state ───────────────────────────────────────────────────
     // All stored in refs so mousemove handler never goes stale
     const dragRef = useRef<{
-        tableId:     string
+        tableId: string
         startTableX: number
         startTableY: number
         startMouseX: number
@@ -220,10 +220,10 @@ export function Dashboard({ dbPath, setDbPath }: DashboardProps) {
         }
 
         window.addEventListener("mousemove", onMouseMove)
-        window.addEventListener("mouseup",   onMouseUp)
+        window.addEventListener("mouseup", onMouseUp)
         return () => {
             window.removeEventListener("mousemove", onMouseMove)
-            window.removeEventListener("mouseup",   onMouseUp)
+            window.removeEventListener("mouseup", onMouseUp)
         }
     }, []) // empty deps — reads everything through refs
 
@@ -241,8 +241,8 @@ export function Dashboard({ dbPath, setDbPath }: DashboardProps) {
     }, [dbPath])
 
     const mainTabs: { id: MainTab; icon: React.ReactNode; label: string }[] = [
-        { id: "erd",  icon: <Network size={13} />,    label: "ERD"      },
-        { id: "data", icon: <Sheet size={13} />,       label: "Data"     },
+        { id: "erd", icon: <Network size={13} />, label: "ERD" },
+        { id: "data", icon: <Sheet size={13} />, label: "Data" },
         { id: "diff", icon: <GitCompare size={13} />, label: "HCL Diff" },
     ]
 

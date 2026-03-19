@@ -42,6 +42,11 @@ mod commands {
     use super::{DbState, ColumnInfo, TableSchema, QueryResult};
 
     /// Open a SQLite file and keep the connection alive.
+    /**
+    * Result (), String -> String for Error, () for success
+    * We use a Mutex<Option<Connection>> to allow interior mutability and the possibility of "no connection" state.
+    * state.0.lock().unwrap() to access the Mutex, then .as_ref() to get Option<&Connection>, and .ok_or(...) to convert None to an error.
+    */
     #[tauri::command]
     pub fn open_db(path: String, state: State<DbState>) -> Result<(), String> {
         let conn = rusqlite::Connection::open(&path).map_err(|e| e.to_string())?;
