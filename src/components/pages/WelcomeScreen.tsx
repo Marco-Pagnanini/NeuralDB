@@ -1,9 +1,11 @@
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Database, FolderOpen } from "lucide-react"
 import { open } from "@tauri-apps/plugin-dialog"
 import { invoke } from "@tauri-apps/api/core"
 import { Tiles } from "../ui/base/tiles"
 import { Button } from "../ui/base/Button"
+import { PgConnectModal, type PgConfig } from "../ui/base/PgConnectModal"
 import logo from "../../assets/logo.png"
 
 interface WelcomeScreenProps {
@@ -11,6 +13,7 @@ interface WelcomeScreenProps {
 }
 
 export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
+    const [pgModalOpen, setPgModalOpen] = useState(false)
 
     async function pickFile() {
         const selected = await open({
@@ -19,13 +22,26 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
             multiple: false,
             directory: false,
         })
-        if (!selected) return          // user cancelled
-        const path = typeof selected === "string" ? selected : selected
-        await invoke("open_db", { path })
-        onConnect(path as string)
+        if (!selected) return
+        await invoke("open_db", { path: selected as string })
+        onConnect(selected as string)
+    }
+
+    async function connectPg(cfg: PgConfig) {
+        await invoke("connect_pg", {
+            host:     cfg.host,
+            port:     cfg.port,
+            dbname:   cfg.dbname,
+            user:     cfg.user,
+            password: cfg.password,
+            ssl:      cfg.ssl,
+        })
+        // Use a display string as the "path" so Dashboard can show the db name
+        onConnect(`postgres://${cfg.host}:${cfg.port}/${cfg.dbname}`)
     }
 
     return (
+        <>
         <div
             className="relative w-full h-full overflow-hidden flex items-center justify-center"
             style={{ background: "var(--bg0)" }}
@@ -124,8 +140,8 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
                         color: "var(--text3)",
                         lineHeight: 1.65,
                     }}>
-                        Connetti un database SQLite e inizia a esplorare,
-                        interrogare e analizzare i tuoi dati.
+                        Connetti un database PostgreSQL o apri un file SQLite
+                        per esplorare, interrogare e analizzare i tuoi dati.
                     </p>
                 </motion.div>
 
@@ -140,10 +156,10 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
                         size="lg"
                         variant="default"
                         leftIcon={<Database size={15} />}
-                        onClick={pickFile}
+                        onClick={() => setPgModalOpen(true)}
                         className="w-full justify-center"
                     >
-                        Connetti database
+                        Connetti PostgreSQL
                     </Button>
 
                     <Button
@@ -159,5 +175,12 @@ export function WelcomeScreen({ onConnect }: WelcomeScreenProps) {
 
             </motion.div>
         </div>
+
+        <PgConnectModal
+            open={pgModalOpen}
+            onClose={() => setPgModalOpen(false)}
+            onConnect={connectPg}
+        />
+        </>
     )
 }
