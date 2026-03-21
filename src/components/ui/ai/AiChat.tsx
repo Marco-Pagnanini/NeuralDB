@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Sparkles, X, Send, Code2, Copy, Check, RotateCcw } from "lucide-react"
 import { Button } from "../base/Button"
-import { generateQuery, explainQuery } from "../../../lib/api"
+import { chatCompletion, explainQuery, type ChatMessage } from "../../../lib/api"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -15,6 +15,18 @@ interface Message {
     sql?: string   // populated when AI returns a SQL block
 }
 
+// ── SQL extraction ─────────────────────────────────────────────────────────────
+// Extracts the first ```sql ... ``` (or ``` ... ```) block from the AI response.
+// Returns { text, sql } where `text` is the message with the block removed.
+
+function extractSql(raw: string): { text: string; sql: string | undefined } {
+    const match = raw.match(/```(?:sql)?\s*([\s\S]*?)```/)
+    if (!match) return { text: raw.trim(), sql: undefined }
+    const sql = match[1].trim()
+    const text = raw.replace(match[0], "").trim()
+    return { text: text || "Ecco la query generata:", sql }
+}
+
 interface AiChatProps {
     open: boolean
     onClose: () => void
@@ -22,16 +34,15 @@ interface AiChatProps {
     onInsertSql?: (sql: string) => void
 }
 
-// ── Intent detection ──────────────────────────────────────────────────────────
+// ── System prompt for the chat agent ─────────────────────────────────────────
 
-function detectIntent(text: string): "explain" | "generate" {
-    const l = text.toLowerCase()
-    if (
-        l.includes("spiega") || l.includes("explain") ||
-        l.includes("cosa fa") || l.includes("what does") ||
-        l.includes("come funziona") || l.includes("how does")
-    ) return "explain"
-    return "generate"
+const SYSTEM_PROMPT: ChatMessage = {
+    role: "system",
+    content:
+        "You are NeuralDB AI, an expert SQL assistant embedded in a database IDE. " +
+        "Help the user write, explain, and optimise SQL queries. " +
+        "When you produce a SQL query, wrap it in a ```sql``` code block. " +
+        "Be concise. Respond in the same language the user writes in.",
 }
 
 // ── SQL block inside a message ─────────────────────────────────────────────────
@@ -162,6 +173,8 @@ const QUICK_ACTIONS = [
 
 export function AiChat({ open, onClose, currentSql, onInsertSql }: AiChatProps) {
     const [messages, setMessages] = useState<Message[]>([WELCOME_MSG])
+    // history sent to the API (excludes the welcome message, includes system prompt)
+    const [history, setHistory] = useState<ChatMessage[]>([])
     const [input, setInput] = useState("")
     const [loading, setLoading] = useState(false)
     const bottomRef = useRef<HTMLDivElement>(null)
@@ -181,50 +194,59 @@ export function AiChat({ open, onClose, currentSql, onInsertSql }: AiChatProps) 
         const text = (overridePrompt ?? input).trim()
         if (!text || loading) return
 
+        // Special action: explain current SQL via dedicated endpoint
+        if (text === "__explain__") {
+            if (!currentSql?.trim()) {
+                setMessages(prev => [...prev, {
+                    id: `u-${Date.now()}`, role: "user", content: "Spiega la query attiva",
+                }, {
+                    id: `a-${Date.now()}`, role: "assistant",
+                    content: "Nessuna query da spiegare. Scrivi prima una query nell'editor SQL.",
+                }])
+                return
+            }
+            const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "Spiega la query attiva" }
+            setMessages(prev => [...prev, userMsg])
+            if (!overridePrompt) setInput("")
+            setLoading(true)
+            try {
+                const explanation = await explainQuery(currentSql)
+                const assistantChatMsg: ChatMessage = { role: "assistant", content: explanation }
+                setHistory(prev => [...prev, { role: "user", content: "Spiega la query attiva" }, assistantChatMsg])
+                setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: explanation }])
+            } catch (e) {
+                setMessages(prev => [...prev, { id: `a-${Date.now()}`, role: "assistant", content: `Errore: ${String(e)}` }])
+            } finally {
+                setLoading(false)
+            }
+            return
+        }
+
+        // Build user message, optionally injecting current SQL as context
+        const contextNote = currentSql?.trim()
+            ? `\n\n[Current SQL in editor]\n\`\`\`sql\n${currentSql}\n\`\`\``
+            : ""
+        const apiContent = text + contextNote
+
         const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: text }
+        const newHistory: ChatMessage[] = [...history, { role: "user", content: apiContent }]
+
         setMessages(prev => [...prev, userMsg])
         if (!overridePrompt) setInput("")
         setLoading(true)
 
         try {
-            // Special action: explain current SQL
-            if (text === "__explain__") {
-                if (!currentSql?.trim()) {
-                    setMessages(prev => [...prev, {
-                        id: `a-${Date.now()}`,
-                        role: "assistant",
-                        content: "Nessuna query da spiegare. Scrivi prima una query nell'editor SQL.",
-                    }])
-                    return
-                }
-                const explanation = await explainQuery(currentSql)
-                setMessages(prev => [...prev, {
-                    id: `a-${Date.now()}`,
-                    role: "assistant",
-                    content: explanation,
-                }])
-                return
-            }
+            const reply = await chatCompletion([SYSTEM_PROMPT, ...newHistory])
+            const { text: replyText, sql } = extractSql(reply.content)
 
-            // Classify and respond
-            const intent = detectIntent(text)
-
-            if (intent === "explain" && currentSql?.trim()) {
-                const explanation = await explainQuery(currentSql)
-                setMessages(prev => [...prev, {
-                    id: `a-${Date.now()}`,
-                    role: "assistant",
-                    content: explanation,
-                }])
-            } else {
-                const sql = await generateQuery(text, [])
-                setMessages(prev => [...prev, {
-                    id: `a-${Date.now()}`,
-                    role: "assistant",
-                    content: "Ecco la query generata:",
-                    sql,
-                }])
-            }
+            const assistantChatMsg: ChatMessage = { role: "assistant", content: reply.content }
+            setHistory([...newHistory, assistantChatMsg])
+            setMessages(prev => [...prev, {
+                id: `a-${Date.now()}`,
+                role: "assistant",
+                content: replyText,
+                sql,
+            }])
         } catch (e) {
             setMessages(prev => [...prev, {
                 id: `a-${Date.now()}`,
@@ -238,6 +260,7 @@ export function AiChat({ open, onClose, currentSql, onInsertSql }: AiChatProps) 
 
     function reset() {
         setMessages([WELCOME_MSG])
+        setHistory([])
         setInput("")
     }
 
