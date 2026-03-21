@@ -337,7 +337,7 @@ export function Dashboard({ dbPath, setDbPath }: DashboardProps) {
                     >
                         AI
                     </Button>
-                    <Button variant="default" size="sm" leftIcon={<Play size={11} />}>RunSQL</Button>
+                    <Button variant="default" size="sm" leftIcon={<Play size={11} />}>Run SQL</Button>
                 </div>
             </header>
 
